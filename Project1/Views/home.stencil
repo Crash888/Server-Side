@@ -1,0 +1,9 @@
+{% extends "master.stencil" %}
+
+{% block body %}
+<h1>Welcome to Million Hairs</h1>
+{% endblock %}
+
+{% block title %}Welcome{% endblock %} 
+
+
