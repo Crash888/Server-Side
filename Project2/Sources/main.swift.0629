@@ -6,8 +6,6 @@ import SwiftyJSON
 
 import CouchDB
 
-import KituraStencil
-
 HeliumLogger.use()
 
 //  Connecting to CouchDB
@@ -142,33 +140,18 @@ router.post("/polls/create") {
     }
 }
 
-router.post("/polls/vote/:pollid", middleware: BodyParser())
-
-router.post("/polls/vote/:pollid") {
+router.post("/polls/vote/:pollid/:option") {
     request, response, next in
 
     //  Make sure we have valid values
-    guard let poll = request.parameters["pollid"] else {
-        try response.status(.badRequest).end()
-        return
-    }
-
-    //  Works with BodyParser above or else get nil value
-    guard let values = request.body else {
-        try response.status(.badRequest).end()
-        return
-    }
-
-    //  Get the URL Encoded fields
-    guard case .urlEncoded(let body) = values else {
+    guard let poll = request.parameters["pollid"],
+        let option = request.parameters["option"] else {
         try response.status(.badRequest).end()
         return
     }
 
     //  Get the poll that the user requested
     database.retrieve(poll) { doc, error in
-        defer { next() }
-
         if let error = error {
             let errorMessage = error.localizedDescription
             let status = ["status": "error", "message": errorMessage]
@@ -176,35 +159,18 @@ router.post("/polls/vote/:pollid") {
             let json = JSON(result)
 
             response.status(.notFound).send(json: json)
+            next()
         } else if let doc = doc {
 
             var newDocument = doc
 
             let id = doc["_id"].stringValue
             let rev = doc["_rev"].stringValue
-            
-            if let vote = body["vote"]?.trimmingCharacters(in: .whitespacesAndNewlines) {
-            
-                switch (vote) {
-                case "1":
-                    newDocument["votes1"].intValue += 1
-                case "2":
-                    newDocument["votes2"].intValue += 1
-                default:
-                    let status = ["status": "error", "message": "Bad vote option"]
-                    let result = ["result": status]
-                    let json = JSON(result)
 
-                    response.status(.badRequest).send(json: json)
-                    return
-                }
-            } else {
-                let status = ["status": "error", "message": "Bad vote option"]
-                let result = ["result": status]
-                let json = JSON(result)
-
-                response.status(.badRequest).send(json: json)
-                return
+            if option == "1" {
+                newDocument["votes1"].intValue += 1
+            } else if option == "2" {
+                newDocument["votes2"].intValue += 1
             }
 
             database.update(id, rev: rev, document: newDocument) { rev, doc, error in
